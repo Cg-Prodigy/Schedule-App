@@ -1,0 +1,195 @@
+#: import Window kivy.core.window.Window
+<CreateTask>:
+    title:title
+    details:details
+    room:room
+    d_check:d_check
+    s_date:s_date
+    s_time:s_time
+    e_date:e_date
+    e_time:e_time
+    MDBoxLayout:
+        md_bg_color:bg_clr
+        orientation: 'vertical'
+        MDToolbar:
+            id:tool_bar
+            title:'Create Task'
+            left_action_items:[['arrow-left',lambda x: root.manager.return_home()]]
+            md_bg_color:bg_clr
+            specific_text_color:i_nrml
+        ScrollView:
+            MDList:
+                size_hint_y:None
+                size_hint_y_min:Window.height+tool_bar.height
+                padding:[dp(10),dp(5)]
+                spacing:dp(5)
+                Box:
+                    ILabel:
+                        text:'Task Details'
+                    Lines:
+                    Input:
+                        hint_text:'Title *'
+                        id:title
+                        on_focus:root.validate_value(self)
+                        helper_text_mode:'on_focus'
+                        helper_text_color_normal:i_nrml
+                    Input:
+                        hint_text:'Description'
+                        id:details
+                        on_focus:root.validate_value(self)
+
+                    Input:
+                        hint_text:'Room/Location'
+                        id:room
+                        on_focus:root.validate_value(self)
+
+                Box:
+                    ILabel:
+                        text:'Date and Time'
+                    Lines:
+                    Box:
+                        orientation:'horizontal'
+                        adaptive_height:True
+                        spacing:dp(10)
+                        padding:[dp(5)]
+                        ILabel:
+                            text:'Start Date:'
+                            adaptive_size:True
+                        Check:
+                            id:d_check
+                            on_release:root.set_date_today(self)
+                        ILabel:
+                            text:'Today'
+                        Btn:
+                            text:'Date'
+                            icon:'plus'
+                            on_release:root.open_date_dialog()
+                    ILabel:
+                        text:'YY-MM-DD'
+                        id:s_date
+                        font_size:sp(13)
+                    Lines:
+                    Box:
+                        orientation:'horizontal'
+                        adaptive_height:True
+                        spacing:dp(10)
+                        padding:[dp(5)]
+                        ILabel:
+                            text:'Start Time:'
+                        Btn:
+                            text:'Time'
+                            icon:'plus'
+                            on_release:root.open_time_dialog()
+                    ILabel:
+                        id:s_time
+                        text:'HH-MM-AM/PM'
+                        font_size:sp(13)
+                    Lines:
+                    ILabel:
+                        text:'Duration'
+                    Box:
+                        orientation:'horizontal'
+                        adaptive_height:True
+                        spacing:dp(30)
+                        padding:[dp(10),0]
+                        Times:
+                            hint_text:'DD'
+                            on_focus:root.durations(self)
+                        Times:
+                            hint_text:'HH'
+                            on_focus:root.durations(self)
+                        Times:
+                            hint_text:'MM'
+                            on_focus:root.durations(self)
+                        Btn:
+                            text:'Add'
+                            icon:'plus'
+                            on_release:root.compute_end_datetime()
+                    ILabel:
+                        text:'End Date'
+                        font_size:sp(13)
+                        id:e_date
+                    ILabel:
+                        text:'End Time'
+                        font_size:sp(13)
+                        id:e_time
+                Box:
+                    spacing:dp(5)
+                    orientation:'vertical'
+                    adaptive_height:True
+                    padding:[dp(10)]
+                    radius:dp(10)
+                    ILabel:
+                        text:'Category and Reminder'
+                    Lines:
+                    Box:
+                        orientation:'horizontal'
+                        adaptive_height:True
+                        spacing:dp(10)
+                        ILabel:
+                            text:'Category'
+                        MDDropDownItem:
+                            text:'None'
+                            on_release:root.set_category(self)
+                    Box:
+                        orientation:'horizontal'
+                        adaptive_height:True
+                        spacing:dp(10)
+                        ILabel:
+                            text:'Reminder:'
+                        MDDropDownItem:
+                            text:'No reminder'
+                            on_release:root.set_reminder(self)
+                Box:
+                    spacing:dp(5)
+                    orientation:'vertical'
+                    adaptive_height:True
+                    padding:[dp(10)]
+                    radius:dp(10)
+                    Btn:
+                        text:'Add Task'
+                        icon:'plus'
+                        pos_hint:{'right':1}
+                        on_release:root.validate_task_values()               
+<Box@MDBoxLayout>:
+    spacing:dp(5)
+    orientation:'vertical'
+    adaptive_height:True
+    padding:[dp(10)]
+    radius:dp(10)
+    md_bg_color:f_ground
+<Check@MDCheckbox>:
+    size_hint: None,None
+    size:dp(20),dp(20)
+    pos_hint:{'center_y':.5}
+    checkbox_icon_normal:'checkbox-marked-circle-outline'
+    checkbox_icon_down:'checkbox-marked-circle'
+    selected_color:t_nrml
+<Input@MDTextField>:
+    font_size:sp(20)
+    mode:'rectangle'
+    line_color_normal:bg_clr
+    line_color_focus:i_nrml
+    size_hint_x:.96
+    pos_hint:{'center_x':.5}
+<ILabel@MDLabel>:
+    markup:True
+    theme_text_color:'Custom'
+    text_color:t_nrml
+    font_size:sp(20)
+    pos_hint:{'center_y':.5}
+    adaptive_height:True
+<Btn@MDRoundFlatIconButton>:
+    text_color:t_nrml
+    icon_color:i_nrml
+    line_color:t_nrml
+    line_width:dp(1.2)
+    font_size:sp(15)
+<Times@MDTextFieldRound>:
+    normal_color:[1,1,1,1]
+    color_active:f_ground
+    line_color:i_nrml
+    pos_hint:{'center_y':.5,'center_x':.5}
+    size_hint_x:.4
+<Lines@MDSeparator>:
+    height:dp(2)

@@ -1,0 +1,52 @@
+#: import Window kivy.core.window.Window
+<Manager>:
+    HomeScreen:
+        id:home_screen
+        task_list:task_list
+        name:'home screen'
+        MDBoxLayout:
+            orientation: 'vertical'
+            MDToolbar:
+                id:t_b
+                title: "Home Page"
+                specific_text_color:i_nrml
+                md_bg_color:bg_clr
+                right_action_items:[['dots-vertical',lambda x: home_screen.home_screen_drop(x)]]
+            MDBoxLayout:
+                orientation:'vertical'
+                md_bg_color:bg_clr
+                ScrollView:
+                    MDList:
+                        id:task_list
+                        size_hint_y_min:Window.height+t_b.height
+                        padding:[dp(7)]
+                        spacing:dp(5)
+        AnchorLayout:
+            anchor_x: 'right'
+            anchor_y: 'bottom'
+            padding:[dp(20)]
+            MDFloatingActionButton:
+                icon:'plus'
+                theme_text_color:'Custom'
+                text_color:i_nrml
+                md_bg_color:f_ground
+                # pos_hint:{'right':1}
+                on_release:
+                    root.current='create task'
+                    root.transition.direction='left'
+    CreateTask:
+        task_list:task_list
+        name:'create task'
+
+<TaskBox>:
+    orientation:'vertical'
+    md_bg_color:f_ground
+    adaptive_height:True
+    radius:[dp(10)]
+    padding:[dp(10),7]
+    spacing:dp(10)
+<TaskLabel>:
+    theme_text_color:'Custom'
+    adaptive_height:True
+    text_color:t_nrml
+    font_size:sp(13)

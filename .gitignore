@@ -1,0 +1,7 @@
+.buildozer 
+task 
+font 
+.vscode
+bin
+tasks.json
+buildozer.spec
