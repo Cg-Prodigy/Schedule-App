@@ -19,8 +19,8 @@
                     MDList:
                         id:task_list
                         size_hint_y_min:Window.height+t_b.height
-                        padding:[dp(7)]
                         spacing:dp(5)
+                        padding:[dp(5)]
         AnchorLayout:
             anchor_x: 'right'
             anchor_y: 'bottom'
@@ -30,7 +30,6 @@
                 theme_text_color:'Custom'
                 text_color:i_nrml
                 md_bg_color:f_ground
-                # pos_hint:{'right':1}
                 on_release:
                     root.current='create task'
                     root.transition.direction='left'
@@ -39,14 +38,64 @@
         name:'create task'
 
 <TaskBox>:
-    orientation:'vertical'
+    tt:tt
+    td:td
+    tl:tl
+    sd:sd
+    ed:ed
+    st:st
+    et:et
+    tr:tr
+    tc:tc
+    orientation: 'vertical'
     md_bg_color:f_ground
-    adaptive_height:True
-    radius:[dp(10)]
-    padding:[dp(10),7]
     spacing:dp(10)
+    padding:[dp(5),dp(10)]
+    radius:dp(10)
+    adaptive_height:True
+    TaskLabel:
+        id:tt
+        font_size:dp(20)
+        text_color:i_nrml
+    MDSeparator:
+        height:dp(2)
+    InnerBox:
+        orientation: 'horizontal'
+        spacing:dp(5)
+        TaskLabel:
+            id:sd
+        TaskLabel:
+            id:td
+    InnerBox:
+        orientation: 'horizontal'
+        spacing:dp(5)
+        TaskLabel:
+            id:ed
+        TaskLabel:
+            id:tl
+    MDSeparator:
+        height:dp(2)
+    InnerBox:
+        orientation: 'horizontal'
+        spacing:dp(5)
+        TaskLabel:
+            id:st
+        TaskLabel:
+            id:et
+    InnerBox:
+        orientation: 'horizontal'
+        spacing:dp(5)
+        TaskLabel:
+            id:tc
+        TaskLabel:
+            id:tr
 <TaskLabel>:
     theme_text_color:'Custom'
     adaptive_height:True
     text_color:t_nrml
     font_size:sp(13)
+
+<InnerBox@MDBoxLayout>:
+    orientation: 'horizontal'
+    adaptive_height:True
+    md_bg_color:f_ground

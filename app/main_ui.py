@@ -1,20 +1,22 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
+
 from kivy.clock import Clock
-from kivy.properties import ObjectProperty
-from kivy.uix.screenmanager import ScreenManager
 from kivy.metrics import dp
+from kivy.properties import ObjectProperty, StringProperty
+from kivy.uix.screenmanager import ScreenManager
 from kivy.utils import get_color_from_hex
-# kivymd
-from kivymd.uix.screen import MDScreen
 from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.picker import MDDatePicker, MDTimePicker
+from kivymd.uix.button import MDRoundFlatButton
 from kivymd.uix.dialog import MDDialog
-from kivymd.uix.button import MDFillRoundFlatButton, MDRoundFlatButton
-from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.label import MDLabel
+from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.picker import MDDatePicker, MDTimePicker
+from kivymd.uix.screen import MDScreen
+from kivymd.uix.snackbar import Snackbar
+from kivymd.uix.selectioncontrol import MDCheckbox
 
 # database
-from tinydb import TinyDB, Query
+from tinydb import Query, TinyDB
 from tinydb.storages import JSONStorage
 from tinydb_serialization import SerializationMiddleware
 from tinydb_serialization.serializers import DateTimeSerializer
@@ -26,8 +28,13 @@ serialization.register_serializer(DateTimeSerializer(), 'TinyDate')
 db = TinyDB('tasks.json', storage=serialization)
 qry = Query()
 
-
+# constants
+i_nrml = get_color_from_hex('FAEDF0')
+t_nrml = get_color_from_hex('EC255A')
+f_ground = get_color_from_hex('292C6D')
 # Entry Class
+
+
 class Manager(ScreenManager):
     def return_home(self):
         self.current = 'home screen'
@@ -44,22 +51,33 @@ class HomeScreen(MDScreen):
 
     def add_tasks(self, time):
         for i in range(len(db.all())):
-            taskbox = TaskBox()
-            title = TaskLabel(text='Title : {}'.format(db.all()[i]['Title']))
-            sdate = TaskLabel(text='Start Date : {}'.format(
-                db.all()[i]['Start Date']))
-            edate = TaskLabel(text='End Date : {}'.format(
-                db.all()[i]['End Date']))
-            stime = TaskLabel(text='Start Time : {}'.format(
-                db.all()[i]['Start Time']))
-            etime = TaskLabel(text='End Time : {}'.format(
-                db.all()[i]['End Time']))
-            taskbox.add_widget(title)
-            taskbox.add_widget(sdate)
-            taskbox.add_widget(edate)
-            taskbox.add_widget(stime)
-            taskbox.add_widget(etime)
-            self.task_list.add_widget(taskbox)
+            self.task_box = TaskBox()
+            self.task_box.tt.text = 'Title ---- {}'.format(
+                db.all()[i]['Title'])
+            self.task_box.td.text = 'Task Description ---- {}'.format(
+                db.all()[i]['Description'])
+            self.task_box.tl.text = 'Task Location ---- {}'.format(
+                db.all()[i]['Room/Location']
+            )
+            self.task_box.sd.text = 'Start Date ---- {}'.format(
+                db.all()[i]['Start Date']
+            )
+            self.task_box.ed.text = 'End Date ---- {}'.format(
+                db.all()[i]['End Date']
+            )
+            self.task_box.st.text = 'Start Time ---- {}'.format(
+                db.all()[i]['Start Time']
+            )
+            self.task_box.et.text = 'End Time ---- {}'.format(
+                db.all()[i]['End Time']
+            )
+            self.task_box.tc.text = 'Category ---- {}'.format(
+                db.all()[i]['Task Category']
+            )
+            self.task_box.tr.text = 'Reminder ---- {}'.format(
+                db.all()[i]['Reminder']
+            )
+            self.task_list.add_widget(self.task_box)
 
     def home_screen_drop(self, instance):
         item = [
@@ -69,7 +87,7 @@ class HomeScreen(MDScreen):
                 'divider': None,
                 'height': dp(40),
                 'theme_text_color': 'Custom',
-                'text_color': get_color_from_hex('FFD369'),
+                'text_color': i_nrml,
                 'on_release': lambda x=f'{i}': self.pick_selection(x)
             } for i in ['Settings', 'About', 'Share', 'Donate']
         ]
@@ -78,7 +96,7 @@ class HomeScreen(MDScreen):
                 items=item,
                 width_mult=2,
                 caller=instance,
-                background_color=get_color_from_hex('393E46')
+                background_color=f_ground
             )
         self.h_drop.open()
 
@@ -95,9 +113,14 @@ class CreateTask(MDScreen):
     s_time = ObjectProperty()
     e_date = ObjectProperty()
     e_time = ObjectProperty()
+    task_list = ObjectProperty()
+    t_dd = ObjectProperty()
+    t_hh = ObjectProperty()
+    t_mm = ObjectProperty()
+    dt_reminder = ObjectProperty()
+    dt_category = ObjectProperty()
     d_category = None
     d_reminder = None
-    task_list = ObjectProperty()
 
     def __init__(self, **kw):
         super().__init__(**kw)
@@ -117,6 +140,17 @@ class CreateTask(MDScreen):
             year=datetime.now().date().year,
             month=datetime.now().date().month,
             day=datetime.now().date().day,
+        )
+        self.time_picker = MDTimePicker(
+            am_pm=str(datetime.now().time().strftime('%p')).lower(),
+            animation_duration=0.01,
+        )
+        self.time_picker.set_time(datetime.now().time())
+        self.time_picker.bind(on_save=self.get_set_time,
+                              on_cancel=self.reset_time)
+        self.success = Snackbar(
+            text='Task Added successfully!',
+            size_hint_x=1
         )
         self.task_values = {}
     #     Clock.schedule_once(self.exp, 0)
@@ -153,9 +187,11 @@ class CreateTask(MDScreen):
         if instance.state == 'down':
             self.s_date.text = str(datetime.now().date())
             self.start_date = datetime.now().date()
+            self.s_date.text_color = i_nrml
         else:
             self.s_date.text = 'YY-MM-DD'
             self.start_date = None
+            self.s_date.text_color = t_nrml
 
     def open_date_dialog(self):
         self.d_check.state = 'normal'
@@ -167,30 +203,27 @@ class CreateTask(MDScreen):
         if value < datetime.now().date():
             self.s_date.text = 'Invalid selection. Cannot go back in time.'
             self.start_date = None
+            self.s_date.text_color = get_color_from_hex('ff4500')
         else:
             self.s_date.text = str(value)
             self.start_date = value
+            self.s_date.text_color = i_nrml
 
     def reset_date(self, instance, value):
         self.s_date.text = 'YY-MM-DD'
     # time
 
     def open_time_dialog(self):
-        time_picker = MDTimePicker(
-            am_pm=str(datetime.now().time().strftime('%p')).lower()
-        )
-        time_picker.set_time(datetime.now().time())
-        time_picker.bind(on_save=self.get_set_time,
-                         on_cancel=self.reset_time)
-        time_picker.open()
+        self.time_picker.open()
 
     def get_set_time(self, instance, time):
-        if self.start_date == None and time < datetime.now().time():
+        if self.start_date == None or time < datetime.now().time():
             self.s_time.text = 'Invalid time selection. Cannot go back in time'
-            self.start_time = None
+            self.s_time.text_color = get_color_from_hex('ff4500')
         else:
             self.start_time = time
             self.s_time.text = str(self.start_time.strftime("%H:%M:%p"))
+            self.s_time.text_color = i_nrml
 
     def reset_time(self, *args):
         self.s_time.text = 'HH-MM-AM/PM'
@@ -281,7 +314,7 @@ class CreateTask(MDScreen):
                 'height': dp(40),
                 'viewclass': 'OneLineListItem',
                 'theme_text_color': 'Custom',
-                'text_color': get_color_from_hex('FFD369'),
+                'text_color': i_nrml,
                 'on_release': lambda x=f'{i}': self.pick_selection(x, instance)
             } for i in ['Work', 'Family', 'Leisure', 'Personal', 'Business', 'Study']
         ]
@@ -290,7 +323,7 @@ class CreateTask(MDScreen):
                 items=item,
                 width_mult=3,
                 caller=instance,
-                background_color=get_color_from_hex('393E46')
+                background_color=f_ground
             )
         self.d_category.open()
 
@@ -308,7 +341,7 @@ class CreateTask(MDScreen):
                 'height': dp(40),
                 'viewclass': 'OneLineListItem',
                 'theme_text_color': 'Custom',
-                'text_color': get_color_from_hex('FFD369'),
+                'text_color': i_nrml,
                 'on_release': lambda x=f'{i}': self.pick_reminder(x, instance)
             } for i in ['No reminder',
                         'On Time',
@@ -316,18 +349,17 @@ class CreateTask(MDScreen):
                         '10 minutes before time', '15 minutes before time'
                         ]
         ]
-        if not self.d_reminder:
-            self.d_reminder = MDDropdownMenu(
-                items=item,
-                width_mult=4,
-                caller=instance,
-                background_color=get_color_from_hex('393E46')
-            )
+        self.d_reminder = MDDropdownMenu(
+            items=item,
+            width_mult=4,
+            caller=instance,
+            background_color=f_ground
+        )
         self.d_reminder.open()
 
     def pick_reminder(self, value, instance):
         instance.text = value
-        self.t_category = value
+        self.t_reminder = value
         self.d_reminder.dismiss()
 
     #  final validation
@@ -373,28 +405,77 @@ class CreateTask(MDScreen):
             self.task_values['Task Category'] = self.t_category
             self.task_values['Reminder'] = self.t_reminder
             db.insert(self.task_values)
-            taskbox = TaskBox()
-            title = TaskLabel(
-                text='Title : {}'.format(self.task_values['Title']))
-            sdate = TaskLabel(text='Start Date : {}'.format(
-                self.task_values['Start Date']))
-            edate = TaskLabel(text='End Date : {}'.format(
-                self.task_values['End Date']))
-            stime = TaskLabel(text='Start Time : {}'.format(
-                self.task_values['Start Time']))
-            etime = TaskLabel(text='End Time : {}'.format(
-                self.task_values['End Time']))
-            taskbox.add_widget(title)
-            taskbox.add_widget(sdate)
-            taskbox.add_widget(edate)
-            taskbox.add_widget(stime)
-            taskbox.add_widget(etime)
-            self.task_list.add_widget(taskbox)
+            # adding new task to the list
+            self.task_box = TaskBox()
+            self.task_box.tt.text = 'Title ---- {}'.format(
+                self.task_values['Title'])
+            self.task_box.td.text = 'Task Description ---- {}'.format(
+                self.task_values['Description'])
+            self.task_box.tl.text = 'Task Location ---- {}'.format(
+                self.task_values['Room/Location']
+            )
+            self.task_box.sd.text = 'Start Date ---- {}'.format(
+                self.task_values['Start Date']
+            )
+            self.task_box.ed.text = 'End Date ---- {}'.format(
+                self.task_values['End Date']
+            )
+            self.task_box.st.text = 'Start Time ---- {}'.format(
+                self.task_values['Start Time']
+            )
+            self.task_box.et.text = 'End Time ---- {}'.format(
+                self.task_values['End Time']
+            )
+            self.task_box.tc.text = 'Category ---- {}'.format(
+                self.task_values['Task Category']
+            )
+            self.task_box.tr.text = 'Reminder ---- {}'.format(
+                self.task_values['Reminder']
+            )
+            # reset everything back to default
+            self.t_title = None
+            self.t_details = 'None'
+            self.t_location = 'None'
+            self.start_date = None
+            self.end_date = None
+            self.start_time = None
+            self.end_time = None
+            self.t_category = 'None'
+            self.t_reminder = 'No reminder'
+            self.dd = 0
+            self.hh = 0
+            self.mm = 0
+            # reset 2
+            self.title.hint_text = 'Title *'
+            self.details.hint_text = 'Description'
+            self.room.hint_text = 'Room/Location'
+            self.d_check.state = 'normal'
+            self.s_date.text = 'YY-MM-DD'
+            self.s_time.text = 'HH-MM-AM/PM'
+            self.e_date.text = 'End Date'
+            self.e_time.text = 'End Time'
+            self.t_dd.hint_text = 'DD'
+            self.t_hh.hint_text = 'HH'
+            self.t_mm.hint_text = 'MM'
+            self.dt_reminder.text = 'No Reminder'
+            self.dt_category.text = 'None'
+            # add widget to home screen and return to homescreen
+            self.task_list.add_widget(self.task_box)
             self.manager.current = 'home screen'
             self.manager.transition.direction = 'right'
+            self.success.open()
 
 
 class TaskBox(MDBoxLayout):
+    tt = ObjectProperty()
+    td = ObjectProperty()
+    tl = ObjectProperty()
+    sd = ObjectProperty()
+    ed = ObjectProperty()
+    st = ObjectProperty()
+    et = ObjectProperty()
+    tc = ObjectProperty()
+    tr = ObjectProperty()
     pass
 
 

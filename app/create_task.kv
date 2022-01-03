@@ -8,6 +8,11 @@
     s_time:s_time
     e_date:e_date
     e_time:e_time
+    t_dd:t_dd
+    t_hh:t_hh
+    t_mm:t_mm
+    dt_reminder:dt_reminder
+    dt_category:dt_category
     MDBoxLayout:
         md_bg_color:bg_clr
         orientation: 'vertical'
@@ -68,6 +73,7 @@
                         text:'YY-MM-DD'
                         id:s_date
                         font_size:sp(13)
+                        text_color:i_nrml
                     Lines:
                     Box:
                         orientation:'horizontal'
@@ -84,35 +90,49 @@
                         id:s_time
                         text:'HH-MM-AM/PM'
                         font_size:sp(13)
+                        text_color:i_nrml
                     Lines:
                     ILabel:
                         text:'Duration'
                     Box:
-                        orientation:'horizontal'
+                        orientation:'vertical'
                         adaptive_height:True
                         spacing:dp(30)
                         padding:[dp(10),0]
-                        Times:
-                            hint_text:'DD'
-                            on_focus:root.durations(self)
-                        Times:
-                            hint_text:'HH'
-                            on_focus:root.durations(self)
-                        Times:
-                            hint_text:'MM'
-                            on_focus:root.durations(self)
-                        Btn:
-                            text:'Add'
-                            icon:'plus'
-                            on_release:root.compute_end_datetime()
+                        Box:
+                            orientation: 'horizontal'
+                            spacing:dp(30)
+                            Times:
+                                id:t_dd
+                                hint_text:'DD'
+                                on_focus:root.durations(self)
+                            Times:
+                                id:t_hh
+                                hint_text:'HH'
+                                on_focus:root.durations(self)
+                            Times:
+                                id:t_mm
+                                hint_text:'MM'
+                                on_focus:root.durations(self)
+                        MDRelativeLayout:
+                            adaptive_height:True
+                            height:a_btn.height
+                            Btn:
+                                id:a_btn
+                                text:'Add'
+                                icon:'plus'
+                                on_release:root.compute_end_datetime()
+                                pos_hint:{'right':1}
                     ILabel:
                         text:'End Date'
                         font_size:sp(13)
                         id:e_date
+                        text_color:i_nrml
                     ILabel:
                         text:'End Time'
                         font_size:sp(13)
                         id:e_time
+                        text_color:i_nrml
                 Box:
                     spacing:dp(5)
                     orientation:'vertical'
@@ -129,6 +149,7 @@
                         ILabel:
                             text:'Category'
                         MDDropDownItem:
+                            id:dt_category
                             text:'None'
                             on_release:root.set_category(self)
                     Box:
@@ -138,6 +159,7 @@
                         ILabel:
                             text:'Reminder:'
                         MDDropDownItem:
+                            id:dt_reminder
                             text:'No reminder'
                             on_release:root.set_reminder(self)
                 Box:
