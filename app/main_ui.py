@@ -1,10 +1,13 @@
 from datetime import datetime, timedelta
-
+from functools import partial
+from kivy.core.window import Window
 from kivy.clock import Clock
+from kivy.animation import Animation
 from kivy.metrics import dp
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.screenmanager import ScreenManager
 from kivy.utils import get_color_from_hex
+from kivymd.uix import button
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRoundFlatButton
 from kivymd.uix.dialog import MDDialog
@@ -52,7 +55,7 @@ class HomeScreen(MDScreen):
     def add_tasks(self, time):
         for i in range(len(db.all())):
             self.task_box = TaskBox()
-            self.task_box.tt.text = 'Title ---- {}'.format(
+            self.task_box.tt.text = '{}'.format(
                 db.all()[i]['Title'])
             self.task_box.td.text = 'Task Description ---- {}'.format(
                 db.all()[i]['Description'])
@@ -404,10 +407,11 @@ class CreateTask(MDScreen):
             self.task_values['End Time'] = str(self.end_time)
             self.task_values['Task Category'] = self.t_category
             self.task_values['Reminder'] = self.t_reminder
-            db.insert(self.task_values)
+            t_id = db.insert(self.task_values)
             # adding new task to the list
             self.task_box = TaskBox()
-            self.task_box.tt.text = 'Title ---- {}'.format(
+            self.task_box.task_id = t_id
+            self.task_box.tt.text = '{}'.format(
                 self.task_values['Title'])
             self.task_box.td.text = 'Task Description ---- {}'.format(
                 self.task_values['Description'])
@@ -445,25 +449,27 @@ class CreateTask(MDScreen):
             self.dd = 0
             self.hh = 0
             self.mm = 0
-            # reset 2
-            self.title.hint_text = 'Title *'
-            self.details.hint_text = 'Description'
-            self.room.hint_text = 'Room/Location'
-            self.d_check.state = 'normal'
-            self.s_date.text = 'YY-MM-DD'
-            self.s_time.text = 'HH-MM-AM/PM'
-            self.e_date.text = 'End Date'
-            self.e_time.text = 'End Time'
-            self.t_dd.hint_text = 'DD'
-            self.t_hh.hint_text = 'HH'
-            self.t_mm.hint_text = 'MM'
-            self.dt_reminder.text = 'No Reminder'
-            self.dt_category.text = 'None'
             # add widget to home screen and return to homescreen
             self.task_list.add_widget(self.task_box)
             self.manager.current = 'home screen'
             self.manager.transition.direction = 'right'
             self.success.open()
+
+    def on_pre_leave(self, *args):
+        self.title.hint_text = 'Title *'
+        self.details.hint_text = 'Description'
+        self.room.hint_text = 'Room/Location'
+        self.d_check.state = 'normal'
+        self.s_date.text = 'YY-MM-DD'
+        self.s_time.text = 'HH-MM-AM/PM'
+        self.e_date.text = 'End Date'
+        self.e_time.text = 'End Time'
+        self.t_dd.hint_text = 'DD'
+        self.t_hh.hint_text = 'HH'
+        self.t_mm.hint_text = 'MM'
+        self.dt_reminder.text = 'No Reminder'
+        self.dt_category.text = 'None'
+        return super().on_pre_leave(*args)
 
 
 class TaskBox(MDBoxLayout):
@@ -476,7 +482,41 @@ class TaskBox(MDBoxLayout):
     et = ObjectProperty()
     tc = ObjectProperty()
     tr = ObjectProperty()
-    pass
+
+    def __init__(self, **kwargs):
+        super(TaskBox, self).__init__(**kwargs)
+        self.bind(
+            on_touch_down=self.create_clock,
+            on_touch_up=self.delete_clock
+        )
+
+    def create_clock(self, widget, touch, *args):
+        if self.collide_point(touch.x, touch.y):
+            callback = partial(self.createDialog, touch)
+            Clock.schedule_once(callback, 1)
+            touch.ud['event'] = callback
+
+    def delete_clock(self, widget, touch, *args):
+        if self.collide_point(touch.x, touch.y):
+            Clock.unschedule(touch.ud['event'])
+
+    def createDialog(self, touch, *args):
+        delete_task = MDDialog(
+            title='Delete Task?',
+            buttons=[
+                MDRoundFlatButton(
+                    text='No', on_release=lambda x:delete_task.dismiss()),
+                MDRoundFlatButton(
+                    text='Yes', on_release=lambda x:self.delete_selected_task(delete_task))
+            ],
+            radius=[dp(10)]
+        )
+        delete_task.open()
+
+    def delete_selected_task(self, dialog):
+        db.remove(qry['Title'] == self.tt.text)
+        dialog.dismiss()
+        self.parent.remove_widget(self)
 
 
 class TaskLabel(MDLabel):

@@ -17,7 +17,7 @@ Builder.load_file('app/create_task.kv')
 class HotReload(MDApp):
     # CLASSES = {'Manager': 'app.main_ui'}
     # KV_FILES = ['app/main_ui.kv', 'app/defaults.kv', 'app/create_task.kv']
-    # AUTORELOADER_PATHS = [('./app', {'recursive': True})]
+    # AUTORELOADER_PATHS = [('.', {'recursive': True})]
 
     # def build_app(self):
     #     return Factory.Manager()
