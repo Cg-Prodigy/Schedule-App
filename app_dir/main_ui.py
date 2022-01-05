@@ -1,13 +1,11 @@
 from datetime import datetime, timedelta
 from functools import partial
-from kivy.core.window import Window
+
 from kivy.clock import Clock
-from kivy.animation import Animation
 from kivy.metrics import dp
-from kivy.properties import ObjectProperty, StringProperty
+from kivy.properties import ObjectProperty
 from kivy.uix.screenmanager import ScreenManager
 from kivy.utils import get_color_from_hex
-from kivymd.uix import button
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRoundFlatButton
 from kivymd.uix.dialog import MDDialog
@@ -15,9 +13,6 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.picker import MDDatePicker, MDTimePicker
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.snackbar import Snackbar
-from kivymd.uix.selectioncontrol import MDCheckbox
-
 # database
 from tinydb import Query, TinyDB
 from tinydb.storages import JSONStorage
@@ -32,9 +27,12 @@ db = TinyDB('tasks.json', storage=serialization)
 qry = Query()
 
 # constants
-i_nrml = get_color_from_hex('FAEDF0')
-t_nrml = get_color_from_hex('EC255A')
-f_ground = get_color_from_hex('292C6D')
+COLOR_CONST = {
+    'i_nrml': get_color_from_hex('14FFEC'),
+    't_nrml': get_color_from_hex('0D7377'),
+    'f_ground':  get_color_from_hex('323232'),
+    'bg_color': get_color_from_hex('212121')
+}
 # Entry Class
 
 
@@ -90,7 +88,7 @@ class HomeScreen(MDScreen):
                 'divider': None,
                 'height': dp(40),
                 'theme_text_color': 'Custom',
-                'text_color': i_nrml,
+                'text_color': COLOR_CONST['i_nrml'],
                 'on_release': lambda x=f'{i}': self.pick_selection(x)
             } for i in ['Settings', 'About', 'Share', 'Donate']
         ]
@@ -99,7 +97,7 @@ class HomeScreen(MDScreen):
                 items=item,
                 width_mult=2,
                 caller=instance,
-                background_color=f_ground
+                background_color=COLOR_CONST['f_ground']
             )
         self.h_drop.open()
 
@@ -151,10 +149,6 @@ class CreateTask(MDScreen):
         self.time_picker.set_time(datetime.now().time())
         self.time_picker.bind(on_save=self.get_set_time,
                               on_cancel=self.reset_time)
-        self.success = Snackbar(
-            text='Task Added successfully!',
-            size_hint_x=1
-        )
         self.task_values = {}
     #     Clock.schedule_once(self.exp, 0)
 
@@ -169,32 +163,31 @@ class CreateTask(MDScreen):
         if not instance.focus:
             if instance.hint_text == 'Title *':
                 if str(instance.text).strip() == '':
-                    self.t_title = 'None'
+                    self.t_title = None
                 else:
                     self.t_title = str(instance.text).strip().title()
-                return
-            elif instance.hint_text == 'Description':
+            if instance.hint_text == 'Description':
                 if str(instance.text).strip() == '':
-                    self.t_details = 'None'
+                    self.t_details = None
                 else:
                     self.t_details = str(instance.text).strip().title()
-                return
-            elif instance.hint_text == 'Room/Location':
+            if instance.hint_text == 'Room/Location':
                 if str(instance.text).strip() == '':
-                    self.t_location = 'None'
+                    self.t_location = None
                 else:
                     self.t_location = str(instance.text).strip().title()
-
     # date
+
     def set_date_today(self, instance):
         if instance.state == 'down':
             self.s_date.text = str(datetime.now().date())
             self.start_date = datetime.now().date()
-            self.s_date.text_color = i_nrml
+            self.s_date.text_color = COLOR_CONST['i_nrml']
+            return
         else:
             self.s_date.text = 'YY-MM-DD'
             self.start_date = None
-            self.s_date.text_color = t_nrml
+            self.s_date.text_color = COLOR_CONST['t_nrml']
 
     def open_date_dialog(self):
         self.d_check.state = 'normal'
@@ -205,12 +198,13 @@ class CreateTask(MDScreen):
     def get_set_date(self, instance, value, date_range):
         if value < datetime.now().date():
             self.s_date.text = 'Invalid selection. Cannot go back in time.'
-            self.start_date = None
+            self.start_date = value
             self.s_date.text_color = get_color_from_hex('ff4500')
+            return
         else:
             self.s_date.text = str(value)
             self.start_date = value
-            self.s_date.text_color = i_nrml
+            self.s_date.text_color = COLOR_CONST['i_nrml']
 
     def reset_date(self, instance, value):
         self.s_date.text = 'YY-MM-DD'
@@ -220,50 +214,52 @@ class CreateTask(MDScreen):
         self.time_picker.open()
 
     def get_set_time(self, instance, time):
-        if self.start_date == None or time < datetime.now().time():
-            self.s_time.text = 'Invalid time selection. Cannot go back in time'
+        if self.start_date <= datetime.now().date() and time < datetime.now().time():
+            self.s_time.text = 'Select a time value higher than the current time'
             self.s_time.text_color = get_color_from_hex('ff4500')
+            self.start_time = None
+            return
         else:
             self.start_time = time
             self.s_time.text = str(self.start_time.strftime("%H:%M:%p"))
-            self.s_time.text_color = i_nrml
+            self.s_time.text_color = COLOR_CONST['i_nrml']
 
     def reset_time(self, *args):
         self.s_time.text = 'HH-MM-AM/PM'
-
     # end time and date
+
     def compute_end_datetime(self):
         if not (self.start_date and self.start_time):
-            alert = MDDialog(
-                title='Error!',
-                text='Cannot compute end date or end time without valid start time and start date.',
+            alert = ErrorDialog(
+                text="[color=14FFEC][b]Error![/b]\nCannot compute end date or end time without valid start time and start date.[/color]",
                 buttons=[
                     MDRoundFlatButton(
-                        text='Ok', on_release=lambda x: alert.dismiss())
-                ],
-                radius=[dp(10)]
+                        text='Ok',
+                        on_release=lambda x: alert.dismiss(),
+                    )
+                ]
             )
             alert.open()
         elif self.dd == 0 and self.mm == 0 and self.hh == 0:
-            alert = MDDialog(
-                title='Error!',
-                text='Atlease one field is required to compute the end date and end time',
+            alert = ErrorDialog(
+                text='[color=14FFEC][b]Error![/b]\nAtlease one field is required to compute the end date and end time[/color]',
                 buttons=[
                     MDRoundFlatButton(
-                        text='Ok', on_release=lambda x: alert.dismiss())
-                ],
-                radius=[dp(10)]
+                        text='Ok',
+                        on_release=lambda x: alert.dismiss(),
+                    )
+                ]
             )
             alert.open()
         elif self.dd == None or self.mm == None or self.hh == None:
-            alert = MDDialog(
-                title='Error!',
-                text='Invalid entry. Cannot compute end date and end time for the task',
+            alert = ErrorDialog(
+                text='[color=14FFEC][b]Error![/b]\nInvalid entry. Cannot compute end date and end time for the task[/color]',
                 buttons=[
                     MDRoundFlatButton(
-                        text='Ok', on_release=lambda x: alert.dismiss())
-                ],
-                radius=[dp(10)]
+                        text='Ok',
+                        on_release=lambda x: alert.dismiss(),
+                    )
+                ]
             )
             alert.open()
         else:
@@ -317,7 +313,7 @@ class CreateTask(MDScreen):
                 'height': dp(40),
                 'viewclass': 'OneLineListItem',
                 'theme_text_color': 'Custom',
-                'text_color': i_nrml,
+                'text_color': COLOR_CONST['i_nrml'],
                 'on_release': lambda x=f'{i}': self.pick_selection(x, instance)
             } for i in ['Work', 'Family', 'Leisure', 'Personal', 'Business', 'Study']
         ]
@@ -326,9 +322,10 @@ class CreateTask(MDScreen):
                 items=item,
                 width_mult=3,
                 caller=instance,
-                background_color=f_ground
+                background_color=COLOR_CONST['f_ground']
             )
         self.d_category.open()
+        return
 
     def pick_selection(self, value, instance):
         instance.text = value
@@ -344,7 +341,7 @@ class CreateTask(MDScreen):
                 'height': dp(40),
                 'viewclass': 'OneLineListItem',
                 'theme_text_color': 'Custom',
-                'text_color': i_nrml,
+                'text_color': COLOR_CONST['i_nrml'],
                 'on_release': lambda x=f'{i}': self.pick_reminder(x, instance)
             } for i in ['No reminder',
                         'On Time',
@@ -356,7 +353,7 @@ class CreateTask(MDScreen):
             items=item,
             width_mult=4,
             caller=instance,
-            background_color=f_ground
+            background_color=COLOR_CONST['f_ground']
         )
         self.d_reminder.open()
 
@@ -364,53 +361,102 @@ class CreateTask(MDScreen):
         instance.text = value
         self.t_reminder = value
         self.d_reminder.dismiss()
-
     #  final validation
+
     def validate_task_values(self):
-        if not(self.t_title and self.start_date and self.start_time):
-            error_dialog = MDDialog(
-                title='Error',
-                text='Unsuccesful. Please Review task details and correct the errors',
+        if not self.t_title:
+            error_dialog = ErrorDialog(
+                text='[color=14FFEC][b]Unsuccesful. A title is required[/b]\n[/color]',
                 buttons=[
-                    MDRoundFlatButton(
+                    DBtn(
                         text='Ok',
                         on_release=lambda x:error_dialog.dismiss()
+                    ),
+                ]
+            )
+            error_dialog.open()
+            return
+        elif not self.start_date:
+            error_dialog = ErrorDialog(
+                text='[color=14FFEC][b]Unsuccesful. A start date is required[/b]\n[/color]',
+                buttons=[
+                    DBtn(
+                        text='Ok',
+                        on_release=lambda x:error_dialog.dismiss(),
+                    ),
+                ]
+            )
+            error_dialog.open()
+            return
+        elif not self.start_time:
+            error_dialog = ErrorDialog(
+                text='[color=14FFEC][b]Unsuccesful. A start time is required[/b]\n[/color]',
+                buttons=[
+                    DBtn(
+                        text='Ok',
+                        on_release=lambda x:error_dialog.dismiss(),
+                    ),
+                ]
+            )
+            error_dialog.open()
+            return
+        elif not (self.dd or self.hh or self.mm):
+            error_dialog = ErrorDialog(
+                text='[color=14FFEC][b]Unsuccesful. Task duration is required[/b]\n[/color]',
+                buttons=[
+                    DBtn(
+                        text='Ok',
+                        on_release=lambda x:error_dialog.dismiss(),
+                    ),
+                ]
+            )
+            error_dialog.open()
+            return
+        elif not (self.end_date and self.end_time):
+            error_dialog = ErrorDialog(
+                text='[color=14FFEC][b]Unsuccesful. End date and end time have not been computed[/b]\n[/color]',
+                buttons=[
+                    DBtn(
+                        text='Ok',
+                        on_release=lambda x:error_dialog.dismiss(),
                     ),
                 ]
             )
             error_dialog.open()
             return
         elif db.search(qry['Title'] == self.t_title):
-            error_dialog = MDDialog(
+            error_dialog = ErrorDialog(
                 title='Error',
                 text='Unsuccesful. A task with the same title already exists',
                 buttons=[
-                    MDRoundFlatButton(
+                    DBtn(
                         text='Ok',
-                        on_release=lambda x:error_dialog.dismiss()
+                        on_release=lambda x:error_dialog.dismiss(),
                     ),
                 ]
             )
             error_dialog.open()
             return
         else:
-            self.task_values['Title'] = self.t_title
-            self.task_values['Description'] = self.t_details
-            self.task_values['Room/Location'] = self.t_location
+            self.task_values['Title'] = str(self.t_title)
+            self.task_values['Description'] = str(self.t_details)
+            self.task_values['Room/Location'] = str(self.t_location)
             self.task_values['Start Date Time'] = datetime.combine(
                 self.start_date, self.start_time)
             self.task_values['End Date Time'] = datetime.combine(
                 self.end_date, self.end_time)
-            self.task_values['Start Date'] = str(self.start_date)
-            self.task_values['End Date'] = str(self.end_date)
-            self.task_values['Start Time'] = str(self.start_time)
-            self.task_values['End Time'] = str(self.end_time)
+            self.task_values['Start Date'] = str(
+                self.start_date.strftime("%Y - %B - %d"))
+            self.task_values['End Date'] = str(
+                self.end_date.strftime("%Y - %B - %d"))
+            self.task_values['Start Time'] = str(
+                self.start_time.strftime("%I:%M:%p"))
+            self.task_values['End Time'] = str(
+                self.end_time.strftime("%I:%M:%p"))
             self.task_values['Task Category'] = self.t_category
             self.task_values['Reminder'] = self.t_reminder
-            t_id = db.insert(self.task_values)
             # adding new task to the list
             self.task_box = TaskBox()
-            self.task_box.task_id = t_id
             self.task_box.tt.text = '{}'.format(
                 self.task_values['Title'])
             self.task_box.td.text = 'Task Description ---- {}'.format(
@@ -436,6 +482,7 @@ class CreateTask(MDScreen):
             self.task_box.tr.text = 'Reminder ---- {}'.format(
                 self.task_values['Reminder']
             )
+            Clock.schedule_once(self.reset_inputs, 0)
             # reset everything back to default
             self.t_title = None
             self.t_details = 'None'
@@ -453,23 +500,21 @@ class CreateTask(MDScreen):
             self.task_list.add_widget(self.task_box)
             self.manager.current = 'home screen'
             self.manager.transition.direction = 'right'
-            self.success.open()
+            self.d_check.state = 'normal'
+            self.s_date.text = 'YY-MM-DD'
+            self.s_time.text = 'HH-MM-AM/PM'
+            self.e_date.text = 'End Date'
+            self.e_time.text = 'End Time'
+            self.dt_reminder.text = 'No Reminder'
+            self.dt_category.text = 'None'
 
-    def on_pre_leave(self, *args):
-        self.title.hint_text = 'Title *'
-        self.details.hint_text = 'Description'
-        self.room.hint_text = 'Room/Location'
-        self.d_check.state = 'normal'
-        self.s_date.text = 'YY-MM-DD'
-        self.s_time.text = 'HH-MM-AM/PM'
-        self.e_date.text = 'End Date'
-        self.e_time.text = 'End Time'
+    def reset_inputs(self, time):
         self.t_dd.hint_text = 'DD'
         self.t_hh.hint_text = 'HH'
         self.t_mm.hint_text = 'MM'
-        self.dt_reminder.text = 'No Reminder'
-        self.dt_category.text = 'None'
-        return super().on_pre_leave(*args)
+        self.title.hint_text = 'Title *'
+        self.details.hint_text = 'Description'
+        self.room.hint_text = 'Room/Location'
 
 
 class TaskBox(MDBoxLayout):
@@ -493,23 +538,29 @@ class TaskBox(MDBoxLayout):
     def create_clock(self, widget, touch, *args):
         if self.collide_point(touch.x, touch.y):
             callback = partial(self.createDialog, touch)
-            Clock.schedule_once(callback, 1)
+            Clock.schedule_once(callback, .7)
             touch.ud['event'] = callback
+            return True
 
     def delete_clock(self, widget, touch, *args):
         if self.collide_point(touch.x, touch.y):
             Clock.unschedule(touch.ud['event'])
+            return True
 
     def createDialog(self, touch, *args):
-        delete_task = MDDialog(
-            title='Delete Task?',
+        delete_task = ErrorDialog(
+            text='[color=14FFEC][b]Alert![/b] Are you sure you want to delete task [b]{}[/b] [/color]'.format(
+                self.tt.text),
             buttons=[
-                MDRoundFlatButton(
-                    text='No', on_release=lambda x:delete_task.dismiss()),
-                MDRoundFlatButton(
-                    text='Yes', on_release=lambda x:self.delete_selected_task(delete_task))
-            ],
-            radius=[dp(10)]
+                DBtn(
+                    text='No',
+                    on_release=lambda x:delete_task.dismiss(),
+                ),
+                DBtn(
+                    text='Yes',
+                    on_release=lambda x:self.delete_selected_task(delete_task),
+                )
+            ]
         )
         delete_task.open()
 
@@ -520,4 +571,13 @@ class TaskBox(MDBoxLayout):
 
 
 class TaskLabel(MDLabel):
+    pass
+
+
+class ErrorDialog(MDDialog):
+    radius = [dp(10)]
+    md_bg_color = COLOR_CONST['f_ground']
+
+
+class DBtn(MDRoundFlatButton):
     pass

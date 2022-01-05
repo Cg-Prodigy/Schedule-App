@@ -1,0 +1,116 @@
+#:import get_color_from_hex kivy.utils.get_color_from_hex
+#: set bg_clr get_color_from_hex('212121')
+#: set f_ground get_color_from_hex('323232')
+#: set i_nrml get_color_from_hex('14FFEC')
+#: set t_nrml get_color_from_hex('0D7377')
+<Box@MDBoxLayout>:
+    spacing:dp(5)
+    orientation:'vertical'
+    adaptive_height:True
+    padding:[dp(10)]
+    radius:dp(10)
+    md_bg_color:f_ground
+<Check@MDCheckbox>:
+    size_hint: None,None
+    size:dp(20),dp(20)
+    pos_hint:{'center_y':.5}
+    checkbox_icon_normal:'checkbox-marked-circle-outline'
+    checkbox_icon_down:'checkbox-marked-circle'
+    selected_color:t_nrml
+<Input@MDTextField>:
+    font_size:sp(20)
+    mode:'rectangle'
+    line_color_normal:bg_clr
+    line_color_focus:i_nrml
+    size_hint_x:.96
+    pos_hint:{'center_x':.5}
+<ILabel@MDLabel>:
+    markup:True
+    theme_text_color:'Custom'
+    text_color:t_nrml
+    font_size:sp(20)
+    pos_hint:{'center_y':.5}
+    adaptive_height:True
+<Btn@MDRoundFlatIconButton>:
+    text_color:t_nrml
+    icon_color:i_nrml
+    line_color:t_nrml
+    line_width:dp(1.2)
+    font_size:sp(15)
+<DBtn@MDRoundFlatButton>:
+    text_color:t_nrml
+    line_color:t_nrml
+<Times@MDTextFieldRound>:
+    normal_color:[1,1,1,1]
+    color_active:f_ground
+    line_color:i_nrml
+    pos_hint:{'center_y':.5,'center_x':.5}
+    size_hint_x:.4
+<Lines@MDSeparator>:
+    height:dp(2)
+
+#  Home page task layout
+<TaskLabel>:
+    theme_text_color:'Custom'
+    adaptive_height:True
+    text_color:t_nrml
+    font_size:sp(13)
+
+<InnerBox@MDBoxLayout>:
+    orientation: 'horizontal'
+    adaptive_height:True
+    md_bg_color:f_ground
+
+#  task box
+<TaskBox>:
+    tt:tt
+    td:td
+    tl:tl
+    sd:sd
+    ed:ed
+    st:st
+    et:et
+    tr:tr
+    tc:tc
+    orientation: 'vertical'
+    md_bg_color:f_ground
+    spacing:dp(10)
+    padding:[dp(5),dp(10)]
+    radius:dp(10)
+    adaptive_height:True
+    TaskLabel:
+        id:tt
+        font_size:dp(20)
+        text_color:i_nrml
+    MDSeparator:
+        height:dp(2)
+    InnerBox:
+        orientation: 'horizontal'
+        spacing:dp(5)
+        TaskLabel:
+            id:sd
+        TaskLabel:
+            id:td
+    InnerBox:
+        orientation: 'horizontal'
+        spacing:dp(5)
+        TaskLabel:
+            id:ed
+        TaskLabel:
+            id:tl
+    MDSeparator:
+        height:dp(2)
+    InnerBox:
+        orientation: 'horizontal'
+        spacing:dp(5)
+        TaskLabel:
+            id:st
+        TaskLabel:
+            id:tc
+    InnerBox:
+        orientation: 'horizontal'
+        spacing:dp(5)
+        TaskLabel:
+            id:et
+        TaskLabel:
+            id:tr

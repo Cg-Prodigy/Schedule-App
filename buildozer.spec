@@ -249,7 +249,7 @@ android.arch = armeabi-v7a
 
 # (int) port number to specify an explicit --port= p4a argument (eg for bootstrap flask)
 #p4a.port =
-
+--blacklist-requirements=sqlite3,openssl
 
 #
 # iOS specific
