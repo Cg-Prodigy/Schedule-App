@@ -19,11 +19,12 @@
     selected_color:t_nrml
 <Input@MDTextField>:
     font_size:sp(20)
-    mode:'rectangle'
+    # mode:'rectangle'
     line_color_normal:bg_clr
     line_color_focus:i_nrml
     size_hint_x:.96
     pos_hint:{'center_x':.5}
+    multiline:False
 <ILabel@MDLabel>:
     markup:True
     theme_text_color:'Custom'
@@ -46,9 +47,12 @@
     line_color:i_nrml
     pos_hint:{'center_y':.5,'center_x':.5}
     size_hint_x:.4
+    helper_text_mode:'persistent'
 <Lines@MDSeparator>:
     height:dp(2)
-
+<ErrorDialog>:
+    radius:[dp(10)]
+    md_bg_color:f_ground
 #  Home page task layout
 <TaskLabel>:
     theme_text_color:'Custom'

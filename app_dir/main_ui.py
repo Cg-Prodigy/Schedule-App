@@ -1,11 +1,13 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from functools import partial
+import re
 
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.properties import ObjectProperty
 from kivy.uix.screenmanager import ScreenManager
 from kivy.utils import get_color_from_hex
+from kivymd.uix import button
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRoundFlatButton
 from kivymd.uix.dialog import MDDialog
@@ -18,14 +20,6 @@ from tinydb import Query, TinyDB
 from tinydb.storages import JSONStorage
 from tinydb_serialization import SerializationMiddleware
 from tinydb_serialization.serializers import DateTimeSerializer
-
-# TinyDB
-
-serialization = SerializationMiddleware(JSONStorage)
-serialization.register_serializer(DateTimeSerializer(), 'TinyDate')
-db = TinyDB('tasks.json', storage=serialization)
-qry = Query()
-
 # constants
 COLOR_CONST = {
     'i_nrml': get_color_from_hex('14FFEC'),
@@ -33,6 +27,13 @@ COLOR_CONST = {
     'f_ground':  get_color_from_hex('323232'),
     'bg_color': get_color_from_hex('212121')
 }
+TIME = datetime.now().time()
+DATE = datetime.now().date()
+# database
+serial = SerializationMiddleware(JSONStorage)
+serial.register_serializer(DateTimeSerializer(), 'TinyDate')
+DB = TinyDB('db.json', storage=serial)
+QRY = Query()
 # Entry Class
 
 
@@ -51,32 +52,33 @@ class HomeScreen(MDScreen):
         Clock.schedule_once(self.add_tasks, 0)
 
     def add_tasks(self, time):
-        for i in range(len(db.all())):
+        for i in range(len(DB.all())):
             self.task_box = TaskBox()
             self.task_box.tt.text = '{}'.format(
-                db.all()[i]['Title'])
+                DB.all()[i]['Title'])
             self.task_box.td.text = 'Task Description ---- {}'.format(
-                db.all()[i]['Description'])
+                DB.all()[i]['Description'])
             self.task_box.tl.text = 'Task Location ---- {}'.format(
-                db.all()[i]['Room/Location']
+                DB.all()[i]['Room/Location']
             )
             self.task_box.sd.text = 'Start Date ---- {}'.format(
-                db.all()[i]['Start Date']
+                DB.all()[i]['Start Date']
             )
             self.task_box.ed.text = 'End Date ---- {}'.format(
-                db.all()[i]['End Date']
+                DB.all()[i]['End Date']
             )
             self.task_box.st.text = 'Start Time ---- {}'.format(
-                db.all()[i]['Start Time']
+                DB.all()[i]['Start Time']
             )
+
             self.task_box.et.text = 'End Time ---- {}'.format(
-                db.all()[i]['End Time']
+                DB.all()[i]['End Time']
             )
             self.task_box.tc.text = 'Category ---- {}'.format(
-                db.all()[i]['Task Category']
+                DB.all()[i]['Category']
             )
             self.task_box.tr.text = 'Reminder ---- {}'.format(
-                db.all()[i]['Reminder']
+                DB.all()[i]['Reminder']
             )
             self.task_list.add_widget(self.task_box)
 
@@ -126,8 +128,8 @@ class CreateTask(MDScreen):
     def __init__(self, **kw):
         super().__init__(**kw)
         self.t_title = None
-        self.t_details = 'None'
-        self.t_location = 'None'
+        self.t_details = None
+        self.t_location = None
         self.start_date = None
         self.end_date = None
         self.start_time = None
@@ -137,356 +139,277 @@ class CreateTask(MDScreen):
         self.dd = 0
         self.hh = 0
         self.mm = 0
-        self.date_picker = MDDatePicker(
-            year=datetime.now().date().year,
-            month=datetime.now().date().month,
-            day=datetime.now().date().day,
+        self.task_info = {}
+        # pickers
+        self.date_picker = DatePicker(
+            primary_color=COLOR_CONST['f_ground'],
+            text_toolbar_color=COLOR_CONST['i_nrml']
         )
-        self.time_picker = MDTimePicker(
-            am_pm=str(datetime.now().time().strftime('%p')).lower(),
-            animation_duration=0.01,
+        self.time_picker = TimePicker(
+            animation_duration=0.0,
+            am_pm=str(TIME.strftime('%p')).lower()
         )
-        self.time_picker.set_time(datetime.now().time())
-        self.time_picker.bind(on_save=self.get_set_time,
-                              on_cancel=self.reset_time)
-        self.task_values = {}
-    #     Clock.schedule_once(self.exp, 0)
-
-    # def exp(self, time):
-    #     print(type(self.manager.children[0]))
-    # validate input values
+    # task details and description
 
     def validate_value(self, instance):
         if instance.focus:
-            if instance.hint_text == 'Title *':
-                instance.helper_text = 'required'
-        if not instance.focus:
-            if instance.hint_text == 'Title *':
-                if str(instance.text).strip() == '':
+            pass
+        else:
+            value = str(instance.text).strip()
+            if instance.hint_text == 'Title':
+                if not value:
+                    instance.helper_text = 'required'
+                    self.t_title = None
+                elif len(value) <= 10 and not DB.search(QRY['Title'] == value):
+                    self.t_title = value
+                    instance.helper_text = 'Valid title. Proceed'
+                    return
+                elif len(value) > 10:
+                    instance.helper_text = 'Error! Your title is quite lengthy. Consider shortening it'
                     self.t_title = None
                 else:
-                    self.t_title = str(instance.text).strip().title()
-            if instance.hint_text == 'Description':
-                if str(instance.text).strip() == '':
-                    self.t_details = None
-                else:
-                    self.t_details = str(instance.text).strip().title()
-            if instance.hint_text == 'Room/Location':
-                if str(instance.text).strip() == '':
-                    self.t_location = None
-                else:
-                    self.t_location = str(instance.text).strip().title()
-    # date
+                    self.t_title = None
+                    instance.helper_text = 'Error! A task with the same title exists'
+                return
+            elif instance.hint_text == 'Description':
+                self.t_details = None if not value else value
+            else:
+                self.t_location = None if not value else value
+    #  Date
 
     def set_date_today(self, instance):
         if instance.state == 'down':
-            self.s_date.text = str(datetime.now().date())
-            self.start_date = datetime.now().date()
-            self.s_date.text_color = COLOR_CONST['i_nrml']
-            return
+            self.start_date = DATE
+            self.s_date.text = str(DATE.strftime('%A %d-%B-%Y'))
         else:
-            self.s_date.text = 'YY-MM-DD'
             self.start_date = None
-            self.s_date.text_color = COLOR_CONST['t_nrml']
+            self.s_date.text = 'DD-MM-YY'
 
     def open_date_dialog(self):
-        self.d_check.state = 'normal'
-        self.date_picker.bind(on_save=self.get_set_date,
-                              on_cancel=self.reset_date)
+        self.date_picker.bind(on_save=self.return_select_date)
         self.date_picker.open()
+        self.d_check.state = 'normal'
+        self.s_date.text = 'DD-MM-YY'
 
-    def get_set_date(self, instance, value, date_range):
-        if value < datetime.now().date():
-            self.s_date.text = 'Invalid selection. Cannot go back in time.'
-            self.start_date = value
-            self.s_date.text_color = get_color_from_hex('ff4500')
-            return
+    def return_select_date(self, instance, value, date_range):
+        if value < DATE:
+            self.s_date.text = '[color=ff3333]Cannot go back in time. Select a date value in the present or future[/color]'
+            self.start_date = None
         else:
-            self.s_date.text = str(value)
+            self.s_date.text = str(value.strftime('%A %d-%B-%Y'))
             self.start_date = value
-            self.s_date.text_color = COLOR_CONST['i_nrml']
-
-    def reset_date(self, instance, value):
-        self.s_date.text = 'YY-MM-DD'
     # time
 
     def open_time_dialog(self):
+        if not self.start_date:
+            self.s_time.text = '[color=ff3333] Cannot select time without a valid date value.[/color]'
+            return
+        self.time_picker.set_time(TIME)
+        self.s_time.text = 'HH-MM-AM/PM'
+        self.time_picker.bind(on_save=self.return_select_time,
+                              on_cancel=self.reset_time_value)
         self.time_picker.open()
 
-    def get_set_time(self, instance, time):
-        if self.start_date <= datetime.now().date() and time < datetime.now().time():
-            self.s_time.text = 'Select a time value higher than the current time'
-            self.s_time.text_color = get_color_from_hex('ff4500')
-            self.start_time = None
+    def return_select_time(self, instance, time):
+        combine_datetime = datetime.combine(self.start_date, time)
+        if combine_datetime < datetime.combine(DATE, TIME):
+            self.s_time.text = '[color=ff3333] Selected time is behind current time. Select a valid time value[/color]'
             return
-        else:
-            self.start_time = time
-            self.s_time.text = str(self.start_time.strftime("%H:%M:%p"))
-            self.s_time.text_color = COLOR_CONST['i_nrml']
+        self.start_time = time
+        self.s_time.text = str(time.strftime('%I:%M:%p'))
+        instance.set_time(TIME)
 
-    def reset_time(self, *args):
-        self.s_time.text = 'HH-MM-AM/PM'
-    # end time and date
+    def reset_time_value(self, instance, time):
+        self.start_time = None
+        instance.set_time(TIME)
 
-    def compute_end_datetime(self):
-        if not (self.start_date and self.start_time):
-            alert = ErrorDialog(
-                text="[color=14FFEC][b]Error![/b]\nCannot compute end date or end time without valid start time and start date.[/color]",
-                buttons=[
-                    MDRoundFlatButton(
-                        text='Ok',
-                        on_release=lambda x: alert.dismiss(),
-                    )
-                ]
-            )
-            alert.open()
-        elif self.dd == 0 and self.mm == 0 and self.hh == 0:
-            alert = ErrorDialog(
-                text='[color=14FFEC][b]Error![/b]\nAtlease one field is required to compute the end date and end time[/color]',
-                buttons=[
-                    MDRoundFlatButton(
-                        text='Ok',
-                        on_release=lambda x: alert.dismiss(),
-                    )
-                ]
-            )
-            alert.open()
-        elif self.dd == None or self.mm == None or self.hh == None:
-            alert = ErrorDialog(
-                text='[color=14FFEC][b]Error![/b]\nInvalid entry. Cannot compute end date and end time for the task[/color]',
-                buttons=[
-                    MDRoundFlatButton(
-                        text='Ok',
-                        on_release=lambda x: alert.dismiss(),
-                    )
-                ]
-            )
-            alert.open()
-        else:
-            combine_duration = datetime.combine(
-                self.start_date, self.start_time)+timedelta(days=self.dd, hours=self.hh, minutes=self.mm)
-            self.end_time = combine_duration.time()
-            self.e_time.text = str(self.end_time.strftime('%H:%M:%p'))
-            self.end_date = combine_duration.date()
-            if combine_duration.date() == datetime.now().date():
-                self.e_date.text = 'Today'
-            else:
-                self.e_date.text = str(self.end_date)
-
+    #  compute end date and time
     def durations(self, instance):
         if instance.focus:
             pass
         else:
-            if instance.text == '':
+            value = str(instance.text).strip()
+            if value == '':
                 instance.icon_left = ''
                 if instance.hint_text == 'DD':
                     self.dd = 0
-                if instance.hint_text == 'HH':
+                elif instance.hint_text == 'HH':
                     self.hh = 0
-                if instance.hint_text == 'MM':
+                else:
                     self.mm = 0
-            else:
-                try:
-                    int_value = abs(int(instance.text))
-                    instance.icon_left = 'check-all'
-                    if instance.hint_text == 'DD':
-                        self.dd = int_value
-                    if instance.hint_text == 'HH':
-                        self.hh = int_value
-                    if instance.hint_text == 'MM':
-                        self.mm = int_value
-                except Exception:
-                    instance.icon_left = 'close-circle-outline'
-                    if instance.hint_text == 'DD':
-                        self.dd = None
-                    if instance.hint_text == 'HH':
-                        self.hh = None
-                    if instance.hint_text == 'MM':
-                        self.mm = None
-    #  category
+                return
+            try:
+                value = int(value)
+                instance.icon_left = 'check-all'
+                if instance.hint_text == 'DD':
+                    self.dd = value
+                elif instance.hint_text == 'HH':
+                    self.hh = value
+                else:
+                    self.mm = value
+            except Exception as e:
+                instance.icon_left = 'close-circle-outline'
+                if instance.hint_text == 'DD':
+                    self.dd = 0
+                elif instance.hint_text == 'HH':
+                    self.hh = 0
+                else:
+                    self.mm = 0
+
+    def compute_end_datetime(self):
+        if str(self.t_dd.text).strip() == '' and str(self.t_hh.text).strip() == '' and str(self.t_mm.text).strip() == '':
+            error_dialog = ErrorDialog(
+                text='[color=ff3333][size=13]At least one field is required to compute end date and time[/size][/color]',
+                buttons=[
+                    DBtn(text='Ok', on_release=lambda x:error_dialog.dismiss())
+                ]
+            )
+            error_dialog.open()
+            return
+        if not self.start_date or not self.start_time:
+            return
+        if self.dd == 0 and self.mm == 0 and self.hh == 0:
+            return
+        combined_datetime = datetime.combine(self.start_date, self.start_time)
+        try:
+            end_datetime = combined_datetime + \
+                timedelta(days=self.dd, hours=self.hh, minutes=self.mm)
+        except OverflowError:
+            error_dialog = ErrorDialog(
+                text='[color=ff3333]The Time machine has met its limits. Its over![/color]',
+                buttons=[
+                    DBtn(text='Ok', on_release=lambda x:error_dialog.dismiss())
+                ]
+            )
+            error_dialog.open()
+            return
+        self.end_date = end_datetime.date()
+        self.end_time = end_datetime.time()
+        self.e_date.text = str(self.end_date.strftime('%A %d-%B-%Y'))
+        self.e_time.text = str(self.end_time.strftime('%I:%M:%p'))
+    # category
 
     def set_category(self, instance):
+        category = ['None', 'Work', 'Personal',
+                    'Leisure', 'Social', 'Study', 'Formal']
         item = [
             {
                 'text': f'{i}',
-                'divider': None,
-                'height': dp(40),
                 'viewclass': 'OneLineListItem',
+                'on_release': lambda x=f'{i}': self.set_type_category(x, d_menu, instance),
+                'divider': None,
                 'theme_text_color': 'Custom',
                 'text_color': COLOR_CONST['i_nrml'],
-                'on_release': lambda x=f'{i}': self.pick_selection(x, instance)
-            } for i in ['Work', 'Family', 'Leisure', 'Personal', 'Business', 'Study']
-        ]
-        if not self.d_category:
-            self.d_category = MDDropdownMenu(
-                items=item,
-                width_mult=3,
-                caller=instance,
-                background_color=COLOR_CONST['f_ground']
-            )
-        self.d_category.open()
-        return
-
-    def pick_selection(self, value, instance):
-        instance.text = value
-        self.t_category = value
-        self.d_category.dismiss()
-    # reminder
-
-    def set_reminder(self, instance):
-        item = [
-            {
-                'text': f'{i}',
-                'divider': None,
                 'height': dp(40),
-                'viewclass': 'OneLineListItem',
-                'theme_text_color': 'Custom',
-                'text_color': COLOR_CONST['i_nrml'],
-                'on_release': lambda x=f'{i}': self.pick_reminder(x, instance)
-            } for i in ['No reminder',
-                        'On Time',
-                        '5 minutes before time',
-                        '10 minutes before time', '15 minutes before time'
-                        ]
+            } for i in category
         ]
-        self.d_reminder = MDDropdownMenu(
+        d_menu = MDDropdownMenu(
             items=item,
-            width_mult=4,
+            width_mult=3,
             caller=instance,
             background_color=COLOR_CONST['f_ground']
         )
-        self.d_reminder.open()
+        d_menu.open()
 
-    def pick_reminder(self, value, instance):
-        instance.text = value
-        self.t_reminder = value
-        self.d_reminder.dismiss()
-    #  final validation
+    def set_type_category(self, item, menu, instance):
+        instance.text = item
+        self.t_category = item
+        menu.dismiss()
+
+    def set_reminder(self, instance):
+        if not(self.start_time or self.start_date):
+            return
+        else:
+            time_diff = datetime.combine(
+                self.start_date, self.start_time)-datetime.combine(DATE, TIME)
+            m_diff = time_diff.seconds / 60
+            print(self.drop_down_menu(m_diff))
+            item = [
+                {
+                    'text': f'{i}',
+                    'viewclass': 'OneLineListItem',
+                    'on_release': lambda x=f'{i}': self.set_item_category(x, d_menu, instance),
+                    'divider': None,
+                    'theme_text_color': 'Custom',
+                    'text_color': COLOR_CONST['i_nrml'],
+                    'height': dp(40),
+                } for i in self.drop_down_menu(m_diff)
+            ]
+            d_menu = MDDropdownMenu(
+                items=item,
+                width_mult=4,
+                caller=instance,
+                background_color=COLOR_CONST['f_ground']
+            )
+            d_menu.open()
+
+    def set_item_category(self, item, menu, instance):
+        instance.text = item
+        self.t_reminder = item
+        menu.dismiss()
+
+    #  final step before pushing task details to the database
 
     def validate_task_values(self):
-        if not self.t_title:
+        if not (self.t_title and self.start_date and self.start_time and self.end_time and self.end_date):
             error_dialog = ErrorDialog(
-                text='[color=14FFEC][b]Unsuccesful. A title is required[/b]\n[/color]',
+                text='[color=ff3333]Cannot add task to the task list. Please review details and try again![/color]',
                 buttons=[
-                    DBtn(
-                        text='Ok',
-                        on_release=lambda x:error_dialog.dismiss()
-                    ),
-                ]
-            )
-            error_dialog.open()
-            return
-        elif not self.start_date:
-            error_dialog = ErrorDialog(
-                text='[color=14FFEC][b]Unsuccesful. A start date is required[/b]\n[/color]',
-                buttons=[
-                    DBtn(
-                        text='Ok',
-                        on_release=lambda x:error_dialog.dismiss(),
-                    ),
-                ]
-            )
-            error_dialog.open()
-            return
-        elif not self.start_time:
-            error_dialog = ErrorDialog(
-                text='[color=14FFEC][b]Unsuccesful. A start time is required[/b]\n[/color]',
-                buttons=[
-                    DBtn(
-                        text='Ok',
-                        on_release=lambda x:error_dialog.dismiss(),
-                    ),
-                ]
-            )
-            error_dialog.open()
-            return
-        elif not (self.dd or self.hh or self.mm):
-            error_dialog = ErrorDialog(
-                text='[color=14FFEC][b]Unsuccesful. Task duration is required[/b]\n[/color]',
-                buttons=[
-                    DBtn(
-                        text='Ok',
-                        on_release=lambda x:error_dialog.dismiss(),
-                    ),
-                ]
-            )
-            error_dialog.open()
-            return
-        elif not (self.end_date and self.end_time):
-            error_dialog = ErrorDialog(
-                text='[color=14FFEC][b]Unsuccesful. End date and end time have not been computed[/b]\n[/color]',
-                buttons=[
-                    DBtn(
-                        text='Ok',
-                        on_release=lambda x:error_dialog.dismiss(),
-                    ),
-                ]
-            )
-            error_dialog.open()
-            return
-        elif db.search(qry['Title'] == self.t_title):
-            error_dialog = ErrorDialog(
-                title='Error',
-                text='Unsuccesful. A task with the same title already exists',
-                buttons=[
-                    DBtn(
-                        text='Ok',
-                        on_release=lambda x:error_dialog.dismiss(),
-                    ),
+                    DBtn(text='Ok', on_release=lambda x:error_dialog.dismiss())
                 ]
             )
             error_dialog.open()
             return
         else:
-            self.task_values['Title'] = str(self.t_title)
-            self.task_values['Description'] = str(self.t_details)
-            self.task_values['Room/Location'] = str(self.t_location)
-            self.task_values['Start Date Time'] = datetime.combine(
+            self.task_info['Title'] = self.t_title
+            self.task_info['Description'] = self.t_details
+            self.task_info['Room/Location'] = self.t_location
+            self.task_info['Start Datetime'] = datetime.combine(
                 self.start_date, self.start_time)
-            self.task_values['End Date Time'] = datetime.combine(
+            self.task_info['End Datetime'] = datetime.combine(
                 self.end_date, self.end_time)
-            self.task_values['Start Date'] = str(
-                self.start_date.strftime("%Y - %B - %d"))
-            self.task_values['End Date'] = str(
-                self.end_date.strftime("%Y - %B - %d"))
-            self.task_values['Start Time'] = str(
-                self.start_time.strftime("%I:%M:%p"))
-            self.task_values['End Time'] = str(
-                self.end_time.strftime("%I:%M:%p"))
-            self.task_values['Task Category'] = self.t_category
-            self.task_values['Reminder'] = self.t_reminder
-            # adding new task to the list
+            self.task_info['Start Date'] = str(
+                self.start_date.strftime('%A %d-%B-%Y'))
+            self.task_info['End Date'] = str(
+                self.end_date.strftime('%A %d-%B-%Y'))
+            self.task_info['Start Time'] = str(
+                self.start_time.strftime('%I:%M:%p'))
+            self.task_info['End Time'] = str(
+                self.end_time.strftime('%I:%M:%p'))
+            self.task_info['Reminder'] = self.t_reminder
+            self.task_info['Category'] = self.t_category
+            DB.insert(self.task_info)
             self.task_box = TaskBox()
             self.task_box.tt.text = '{}'.format(
-                self.task_values['Title'])
+                self.task_info['Title'])
             self.task_box.td.text = 'Task Description ---- {}'.format(
-                self.task_values['Description'])
+                self.task_info['Description'])
             self.task_box.tl.text = 'Task Location ---- {}'.format(
-                self.task_values['Room/Location']
+                self.task_info['Room/Location']
             )
             self.task_box.sd.text = 'Start Date ---- {}'.format(
-                self.task_values['Start Date']
+                self.task_info['Start Date']
             )
             self.task_box.ed.text = 'End Date ---- {}'.format(
-                self.task_values['End Date']
+                self.task_info['End Date']
             )
             self.task_box.st.text = 'Start Time ---- {}'.format(
-                self.task_values['Start Time']
+                self.task_info['Start Time']
             )
+
             self.task_box.et.text = 'End Time ---- {}'.format(
-                self.task_values['End Time']
+                self.task_info['End Time']
             )
             self.task_box.tc.text = 'Category ---- {}'.format(
-                self.task_values['Task Category']
+                self.task_info['Category']
             )
             self.task_box.tr.text = 'Reminder ---- {}'.format(
-                self.task_values['Reminder']
+                self.task_info['Reminder']
             )
-            Clock.schedule_once(self.reset_inputs, 0)
-            # reset everything back to default
+            self.task_list.add_widget(self.task_box)
             self.t_title = None
-            self.t_details = 'None'
-            self.t_location = 'None'
+            self.t_details = None
+            self.t_location = None
             self.start_date = None
             self.end_date = None
             self.start_time = None
@@ -496,25 +419,42 @@ class CreateTask(MDScreen):
             self.dd = 0
             self.hh = 0
             self.mm = 0
-            # add widget to home screen and return to homescreen
-            self.task_list.add_widget(self.task_box)
+            self.task_info = {}
             self.manager.current = 'home screen'
             self.manager.transition.direction = 'right'
-            self.d_check.state = 'normal'
-            self.s_date.text = 'YY-MM-DD'
-            self.s_time.text = 'HH-MM-AM/PM'
-            self.e_date.text = 'End Date'
-            self.e_time.text = 'End Time'
-            self.dt_reminder.text = 'No Reminder'
-            self.dt_category.text = 'None'
+            Clock.schedule_once(self.reset_values, .1)
 
-    def reset_inputs(self, time):
-        self.t_dd.hint_text = 'DD'
-        self.t_hh.hint_text = 'HH'
-        self.t_mm.hint_text = 'MM'
-        self.title.hint_text = 'Title *'
-        self.details.hint_text = 'Description'
-        self.room.hint_text = 'Room/Location'
+    def reset_values(self, time):
+        self.title.text = ''
+        self.title.helper_text = 'required'
+        self.details.text = ''
+        self.room.text = ''
+        self.d_check.state = 'normal'
+        self.s_time.text = 'HH-MM-AM/PM'
+        self.s_date.text = 'DD-MM-YY'
+        self.t_dd.text = ''
+        self.t_hh.text = ''
+        self.t_mm.text = ''
+        self.t_dd.icon_left = ''
+        self.t_hh.icon_left = ''
+        self.t_mm.icon_left = ''
+        self.e_date.text = ''
+        self.e_time.text = ''
+        self.dt_category.text = 'None'
+        self.dt_reminder.text = 'No reminder'
+    #  static
+
+    @staticmethod
+    def drop_down_menu(c_time):
+        item = ['No reminder', 'On time', '5 minutes before time',
+                '10 minutes before time', '15 minutes before time']
+        if c_time < 15:
+            item = item[0:4]
+        if c_time < 10:
+            item = item[0:3]
+        if c_time < 5:
+            item = item[0:2]
+        return item
 
 
 class TaskBox(MDBoxLayout):
@@ -549,7 +489,7 @@ class TaskBox(MDBoxLayout):
 
     def createDialog(self, touch, *args):
         delete_task = ErrorDialog(
-            text='[color=14FFEC][b]Alert![/b] Are you sure you want to delete task [b]{}[/b] [/color]'.format(
+            text='[color=14FFEC]Are you sure you want to delete task [b]{}[/b] [/color]'.format(
                 self.tt.text),
             buttons=[
                 DBtn(
@@ -565,7 +505,7 @@ class TaskBox(MDBoxLayout):
         delete_task.open()
 
     def delete_selected_task(self, dialog):
-        db.remove(qry['Title'] == self.tt.text)
+        DB.remove(QRY['Title'] == self.tt.text)
         dialog.dismiss()
         self.parent.remove_widget(self)
 
@@ -575,9 +515,18 @@ class TaskLabel(MDLabel):
 
 
 class ErrorDialog(MDDialog):
-    radius = [dp(10)]
-    md_bg_color = COLOR_CONST['f_ground']
+    pass
 
 
 class DBtn(MDRoundFlatButton):
+    pass
+
+
+class DatePicker(MDDatePicker):
+    year = DATE.year,
+    month = DATE.month,
+    day = DATE.day
+
+
+class TimePicker(MDTimePicker):
     pass

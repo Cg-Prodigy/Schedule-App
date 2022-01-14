@@ -36,7 +36,7 @@ version = 0.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-requirements = python3,kivy,kivymd,android,tinydb,tinydb-serialization
+requirements = python3,kivy,kivymd,android,tinydb
 
 # (str) Custom source folders for requirements
 # Sets custom source for any requirements with recipes
@@ -249,7 +249,6 @@ android.arch = armeabi-v7a
 
 # (int) port number to specify an explicit --port= p4a argument (eg for bootstrap flask)
 #p4a.port =
---blacklist-requirements=sqlite3,openssl
 
 #
 # iOS specific

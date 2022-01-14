@@ -33,11 +33,13 @@
                         text:'Task Details'
                     Lines:
                     Input:
-                        hint_text:'Title *'
+                        hint_text:'Title'
+                        helper_text:'required'
+                        helper_text_mode:'persistent'
+                        helper_text_color_focus:[1,1,1,1]
+                        max_text_length:10
                         id:title
                         on_focus:root.validate_value(self)
-                        helper_text_mode:'on_focus'
-                        helper_text_color_normal:i_nrml
                     Input:
                         hint_text:'Description'
                         id:details
@@ -70,7 +72,7 @@
                             icon:'plus'
                             on_release:root.open_date_dialog()
                     ILabel:
-                        text:'YY-MM-DD'
+                        text:'DD-MM-YY'
                         id:s_date
                         font_size:sp(13)
                         text_color:i_nrml
@@ -116,13 +118,14 @@
                                 on_focus:root.durations(self)
                         MDRelativeLayout:
                             adaptive_height:True
-                            height:a_btn.height
+                            height:a_btn.height-dp(30)
                             Btn:
                                 id:a_btn
                                 text:'Add'
                                 icon:'plus'
                                 on_release:root.compute_end_datetime()
                                 pos_hint:{'right':1}
+                    Lines:
                     ILabel:
                         text:'End Date'
                         font_size:sp(13)
